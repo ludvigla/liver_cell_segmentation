@@ -1,6 +1,6 @@
 # cell segmentation in HE images
 
-## Installation requirements
+## requirements
 
 The following R packages are required to run the scripts:
 
@@ -16,7 +16,7 @@ you can play around with the parameter settings to achieve optimal results.
 
 ## Run script from command line
 
-Once the parameter settings have been determines, the cell segmentation workflow can be run
+Once the parameter settings have been determined, the cell segmentation workflow can be run
 from the terminal:
 
 `Rscript ./scripts/segment_liver_nuclei.R -h`

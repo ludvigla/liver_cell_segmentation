@@ -25,6 +25,3 @@ Example:
 
 `Rscript ./scripts/segment_liver_nuclei.R  --croparea 12700,17800,12000,7800 --x-scale 0.25 --brush-size-thresholding 21 --brush-size-opening 5 --offset-threshold 0.05 --array-type 1k --method 2 /path/to/HE_image.jpg`
 
-
-
-![Alt text](results/cells_within_spots.jpeg?raw=true "Title")

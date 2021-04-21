@@ -1,0 +1,259 @@
+---
+title: "Liver cell segmetnation"
+author: "Ludvig Larsson"
+date: "3/29/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(magick)
+library(magrittr)
+library(EBImage)
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+source(file = "../scripts/global_functions.R")
+
+"10325x11200+2250+1015"
+imcancer <- image_read(path = "../C1_cancer_images/C1-cancer-cells-mask.jpg") %>%
+  image_crop(geometry = geometry_area(width = 10325*2, height = 11200*2, x_off = 2250*2, y_off = 1015*2)) %>%
+  image_scale("8000") %>%
+  as_EBImage()
+
+imfibroblast <- image_read(path = "../C1_cancer_images/C1-fibroblast-mask.jpg") %>%
+  image_crop(geometry = geometry_area(width = 10325*2, height = 11200*2, x_off = 2250*2, y_off = 1015*2)) %>%
+  image_scale("8000") %>%
+  as_EBImage()
+
+imother <- image_read(path = "../C1_cancer_images/C1-other-cells-mask.jpg") %>%
+  image_crop(geometry = geometry_area(width = 10325*2, height = 11200*2, x_off = 2250*2, y_off = 1015*2)) %>%
+  image_scale("8000") %>%
+  as_EBImage()
+
+```
+
+Create a small representative crop window to test segmentation on.
+
+```{r small_crop, fig.width=12, fig.height=4}
+par(mfrow = c(1, 3))
+im_cropped_cancer <- 1 - imcancer[3000:4000, 3000:4000, ]
+display(im_cropped_cancer, method = "raster")
+
+im_cropped_fibroblast <- 1 - imfibroblast[3000:4000, 3000:4000, ]
+display(im_cropped_fibroblast, method = "raster")
+
+im_cropped_other <- 1 - imother[3000:4000, 3000:4000, ]
+display(im_cropped_other, method = "raster")
+
+```
+
+
+Let's remove the green color channel and convert the image to grayscale and then invert the color intensities so that nuclei are bright and the background is dark (just to make things a little easier to work with). I have also added some contrast (gamma factor) to the grayscale image.
+
+```{r grayscale, fig.height=3, fig.width=6.5}
+
+# Create an RGB image with an empty green channel
+imgray_cancer <- channel(im_cropped_cancer, "gray")
+imgray_fibroblast <- channel(im_cropped_fibroblast, "gray")
+imgray_other <- channel(im_cropped_other, "gray")
+
+imgray <- imgray_cancer + imgray_fibroblast + imgray_other
+
+```
+
+
+### Label cells
+
+Next we need to label connected "positive" pixels as cells which can be done using `bwlabel`. In the histogram below, we can see the areas of the segmented cells in pixels.
+
+```{r label_cells}
+# Next we need to define neighboring sets of "positive" pixels as cells which
+# can be done using bwlabel
+cells_segmented <- imgray > 0.5
+cells_segmented <- bwlabel(cells_segmented)
+
+hist(table(cells_segmented)[-1], breaks = 100, xlab = "area [pixels]", main = "Cell area [pixels] distribution")
+
+```
+
+### Clean up speckles
+
+```{r clean, fig.width=9.5, fig.height=3}
+
+# Lastly, we remove cells that are either too small or too big
+cells_cleaned <- clean_cells(imthreshold = cells_segmented, thr = c(5, 1000))
+
+par(mfrow = c(1, 3))
+plot(imgray); text(x = 10, y = 20, label = "original image", adj = c(0, 1), col = "orange", cex = 1.5)
+plot(cells_segmented); text(x = 10, y = 20, label = "segmented image", adj = c(0, 1), col = "orange", cex = 1.5)
+plot(cells_cleaned); text(x = 10, y = 20, label = "cleaned segmented image", adj = c(0, 1), col = "orange", cex = 1.5)
+
+```
+
+Let's overlay our results on the original image
+
+```{r paint nuclei, fig.width=12, fig.height=12}
+
+cells_colored <- paintObjects(cells_cleaned, im_cropped, col = "#FFA500")
+plot(im_cropped); text(x = 10, y = 20, label = "original image", adj = c(0, 1), col = "yellow", cex = 5)
+plot(cells_colored); text(x = 10, y = 20, label = "outlined nuclei", adj = c(0, 1), col = "yellow", cex = 5)
+
+```
+
+## Run segmentation on whole tissue section
+
+```{r segment_whole_section}
+
+seg_cells <- function(im1, im2, im3) {
+  # Create an RGB image with an empty green channel
+  imgray_cancer <- channel(im1, "gray")
+  imgray_fibroblast <- channel(im2, "gray")
+  imgray_other <- channel(im3, "gray")
+  imgray <- imgray_cancer + imgray_fibroblast + imgray_other
+  cells_segmented <- imgray > 0.5
+  cells_segmented <- bwlabel(cells_segmented)
+  cells_cleaned <- clean_cells(imthreshold = cells_segmented, thr = c(5, 1000), verbose = TRUE)
+  #cells_watershed <- watershed_cells(imclean = cells_cleaned, verbose = TRUE)
+  cells_watershed <- cells_cleaned
+  return(cells_watershed)
+}
+
+# Run workflow
+cleaned_cells_section <- seg_cells(im1 = 1 - imcancer, im2 = 1 - imfibroblast, im3 = 1 - imother)
+
+```
+
+## Load spot selection files
+
+```{r spots}
+
+spot_coordinates <- read.table(file = "../data/C1_cropped_180rot.tsv", header = T, sep = "\t")
+
+```
+
+
+## Plot spots
+
+```{r, fig.width=10, fig.height=10}
+
+plotCircle <- function(x, y, r) {
+  angles <- seq(0, 2*pi, length.out = 360)
+  lines(r*cos(angles) + x, r*sin(angles) + y)
+}
+
+x_off = 2250; y_off = 1015
+
+jpeg(filename = "../C1_cancer/HE_spots.jpeg", width = dim(im)[1], height = dim(im)[2], res = 300)
+display(im, method = "raster")
+apply(spot_coordinates[, c("pixel_x", "pixel_y")], 1, function(df) plotCircle((df[1] - x_off)/sf, (df[2] - y_off)/sf, spot_radius/sf))
+dev.off()
+
+```
+
+
+## Extract cell features
+
+```{r cell_features, fig.width=8, fig.height=8}
+
+# Extract centroid coordinates for cells
+fts.moment <- computeFeatures.moment(cleaned_cells_section)
+
+# Create a cell coordinate table 
+cell_coordinates <- data.frame(fts.moment[, c("m.cx", "m.cy")])
+
+# To make the coordinates compatible with the spot selection table,
+# we need to adjust them to account for the rescaling and cropping 
+# done in the first step
+original_HE_width <- 10325 # width of HE used for ST spot detector (pixels)
+downscaled_HE_width <- 8000 # width of downscaled HE image used for this segmentation process
+sf <- original_HE_width/downscaled_HE_width # Scalefactor
+
+# Convert cell coordinates to fit to the same coordinate system as the spots
+cell_coordinates$m.cx <- (cell_coordinates$m.cx*sf) + 2250
+cell_coordinates$m.cy <- (cell_coordinates$m.cy*sf) + 1015
+
+ggplot() +
+  geom_point(data = cell_coordinates, aes(m.cx, m.cy), size = 0.1) +
+  geom_point(data = spot_coordinates, aes(pixel_x, pixel_y), color = "red") +
+  theme_void() +
+  scale_x_continuous(limits = c(0, 30131/2)) +
+  scale_y_continuous(limits = c(0, 27755/2))
+
+```
+
+## Compute minimum spot-spot distance
+
+```{r spot_dist}
+
+distMat <- dist(spot_coordinates[, c("pixel_x", "pixel_y")])
+distMat <- as.matrix(distMat)
+diag(distMat) <- Inf
+center_to_center_distance <- mean(apply(distMat, 2, min))
+
+```
+
+## Get cells within spots
+
+Label cells that are within 1 spot radius of the spot centers.
+
+```{r cells_within_spots}
+
+spot_radius <- center_to_center_distance*0.25
+
+# Calculate pairwise distances
+set1 <- spot_coordinates[, c("pixel_x", "pixel_y")]
+set2 <- cell_coordinates
+mindist <- apply(set1, 1, function(x) {
+  sqrt(colSums((t(set2[, 1:2]) - x)^2))
+})
+spotids <- paste0(spot_coordinates$x, "x", spot_coordinates$y)
+
+arrind <- which(mindist <= spot_radius, arr.ind = TRUE)
+df <- data.frame(dist = apply(arrind, 1, function(x) {mindist[x[1], x[2]]}),
+           ID = arrind[, "row"], spot = spotids[arrind[, "col"]])
+cell_coordinates$within <- "no"
+cell_coordinates$within[df$ID] <- "yes"
+cell_coordinates$spot <- NA
+cell_coordinates$spot[df$ID] <- df$spot
+
+```
+
+Plot selected cells
+
+```{r plot_cells, fig.width=8, fig.height=8}
+
+ggplot(cell_coordinates, aes(m.cx, 27755/2 - m.cy, color = within)) +
+  geom_point(size = 0.1) +
+  theme_void() +
+  scale_x_continuous(limits = c(0, 30131/2)) +
+  scale_y_continuous(limits = c(0, 27755/2))
+
+```
+Count number of cells per spot
+
+```{r count_cells_per_spot}
+
+cell_coordinates_subset <- na.omit(cell_coordinates)
+cells_per_spot <- cell_coordinates_subset %>% 
+  group_by(within, spot) %>%
+  summarize(count = n())
+
+```
+
+
+## Date
+
+```{r date}
+date
+```
+
+## Session info
+
+```{r session}
+sessionInfo()
+```

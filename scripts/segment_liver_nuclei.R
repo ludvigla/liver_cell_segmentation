@@ -16,37 +16,37 @@ parser <- ArgumentParser()
 # specify our desired options 
 # by default ArgumentParser will add an help option 
 parser$add_argument("-v", "--verbose", action = "store_true", default = TRUE,
-                    help = "Print extra output [default]")
+                    help = "Print extra output [default].")
 parser$add_argument("-o", "--outdir", default = NULL,
-                    help = "Output directory name")
+                    help = "Output directory name.")
 parser$add_argument("-s", "--spotfile", default = NULL,
-                    help = "Path to spotfile")
+                    help = "Path to spotfile obtained from the ST spot detector. Here, the pixel coordinates should match the input HE image, otherwise you will need to specify a spotfile scale factor if the HE image have been scaled.")
 parser$add_argument("--x-scale", default = 0.25, type = "double",
-                    help = "Scaling factor image width [numeric]. Need to be between 0 and 1.")
+                    help = "Scaling factor image width [numeric]. Need to be between 0 and 1. This scaling factor will reduce the size of the cropped image before proceeding with the cell segmentation.")
 parser$add_argument("--croparea", default = NULL,
-                    help = "Rectangular crop area defined by width*height+x_offset+y_offset [string]. Example format: 1000,1000,200,200")
-parser$add_argument("--method", default = "1", type = "character",
-                    help = "Segmentation method (choices: '1', '2')")
+                    help = "Rectangular crop area defined by width*height+x_offset+y_offset [string]. Example format: 1000,1000,200,200 which will cut out a 1000x1000 rectangle offset by 200 pixels along the x axis and 200 pixels along the y axis. Top left corner = (0, 0).")
+parser$add_argument("--method", default = "2", type = "character",
+                    help = "Segmentation method (choices: '1', '2').")
 parser$add_argument("--offset-threshold", default = 0.05, type = "double",
-                    help = "Offset for thresholding [numeric]")
+                    help = "Offset for thresholding. See rmarkdown for example [numeric].")
 parser$add_argument("--brush-size-thresholding", default = 5, type = "integer",
-                    help = "Brush size for thresholding [numeric]")
+                    help = "Brush size for thresholding. See rmarkdown for example [numeric].")
 parser$add_argument("--brush-size-opening", default = 3, type = "integer",
-                    help = "Brush size for opening [numeric]")
+                    help = "Brush size for opening. See rmarkdown for example [numeric].")
 parser$add_argument("--cell-threshold-min", default = 15, type = "integer",
-                    help = "Minimum cell size [numeric]")
+                    help = "Minimum cell size in pixels [integer]. This threshold will be highly dependent on the image size and can be determined by runnning the segmentation workflow on a small crop area using the rmarkdown example.")
 parser$add_argument("--cell-threshold-max", default = 500, type = "integer",
-                    help = "Maximum cell size [numeric]")
+                    help = "Maximum cell size in pixels [integer]. This threshold will be highly dependent on the image size and can be determined by runnning the segmentation workflow on a small crop area using the rmarkdown example.")
 parser$add_argument("--array-type", default = "2k", type = "character",
-                    help = "Set array type ['1k' or '2k']")
+                    help = "Set array type ['1k' or '2k']. '1k' = first generation 1000 spot array, '2k' = 3nd generation 2000 spots array.")
 parser$add_argument("--skip-seg", action = "store_true", default = FALSE,
-                    help = "Skip segmentation process")
+                    help = "Skip segmentation process. Should only be used if you have already done the segmentation and want to quantify cells per spot.")
 parser$add_argument("--disable-watershed", action = "store_false", default = TRUE,
-                    help = "Should watershedding be used? This will slow down the segmentation significantly, but increases the performance [default]")
+                    help = "Should watershedding be used? This will slow down the segmentation significantly, but increases the performance [default].")
 parser$add_argument("--spotfile-scale-factor", default = 0.1, type = "double",
-                    help = "Scale factor used to map coordinates from HE image to spotfile coordinate system [numeric]")
+                    help = "Scale factor used to map coordinates from HE image to spotfile coordinate system [numeric]. For example, if the spot pixel coordinates from the ST spot detector were obtained from an 50% downscaled version of the HE image, a scale factor of 0.5 should be used.")
 parser$add_argument("--export-intermediate-files", action = "store_true", default = FALSE,
-                    help = "Export image of segmented nuclei and nuclei outlined on H&E image [default]")
+                    help = "Export image of segmented nuclei and nuclei outlined on H&E image.")
 
 parser$add_argument("image", nargs = 1, help = "H&E image")
 

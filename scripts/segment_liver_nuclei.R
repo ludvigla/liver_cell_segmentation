@@ -103,8 +103,12 @@ if (!is.null(croprect)) {
   stopifnot(length(rect) == 4)
   w <- rect[1]; h <- rect[2]; xoff <- rect[3]; yoff <- rect[4]
   im <- im %>%
-    image_crop(geometry = geometry_area(width = w, height = h, x_off = xoff, y_off = yoff)) %>%
-    image_scale(paste0(round(args$x_scale*image_info(im)$width))) %>%
+    image_crop(geometry = geometry_area(width = w, height = h, x_off = xoff, y_off = yoff))
+  iminf <- image_info(im)
+  print(paste0("Image width: ", iminf$width))
+  print(paste0("Image width after scaling: ", args$x_scale*iminf$width))
+  im <- im %>%
+    image_scale(paste0(round(args$x_scale*iminf$width))) %>%
     as_EBImage()
 } else {
   im <- im %>%

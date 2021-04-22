@@ -19,10 +19,10 @@ library(magrittr)
 library(ggplot2)
 source(file = "../scripts/global_functions.R")
 
-"10325x11200+2250+1015"
-im <- image_read(path = "../data/C1_cropped_180rot_small.jpg") %>%
-  image_crop(geometry = geometry_area(width = 10325, height = 11200, x_off = 2250, y_off = 1015)) %>%
-  image_scale("8000") %>%
+"25800,13500,3600,9700"
+im <- image_read(path = "../data/191015_spot_ST_CN65_Liver_D2_0.1.jpg") %>%
+  image_crop(geometry = geometry_area(width = 25800, height = 13500, x_off = 3600, y_off = 9700)) %>%
+  image_scale(paste0(25800*0.6)) %>%
   as_EBImage()
 
 ```
@@ -31,7 +31,7 @@ Create a small representative crop window to test segmentation on.
 
 ```{r small_crop, fig.width=10, fig.height=10}
 
-im_cropped <- im[3000:4000, 3000:4000, ]
+im_cropped <- im[5000:6000, 5000:6000, ]
 display(im_cropped, method = "raster")
 
 ```
@@ -81,14 +81,14 @@ For the segmentation workflow I have created a set of functions that can be used
 nuc <- imgray
 #nmask = thresh(nuc, w=5, h=5, offset=0.05) #original setting
 
-f = makeBrush(11, shape='disc', step=FALSE)
+f = makeBrush(51, shape='disc', step=FALSE)
 f = f/sum(f)
-nmask <- nuc > (filter2(nuc, f, boundary="replicate") + 0.03)
+nmask <- nuc > (filter2(nuc, f, boundary="replicate") + 0.08)
 #nmask <- nmask > 0.6
 
-nmask = opening(nmask, makeBrush(3, shape='disc')) #original setting
+nmask = opening(nmask, makeBrush(7, shape='disc')) #original setting
 #nmask = opening(nmask, makeBrush(5, shape='disc'))
-#nmask = fillHull(nmask)
+nmask = fillHull(nmask)
 
 plot(imgray); text(x = 10, y = 20, label = "original image", adj = c(0, 1), col = "orange", cex = 1.5)
 plot(nmask); text(x = 10, y = 20, label = "segmented cells", adj = c(0, 1), col = "orange", cex = 1.5)
@@ -142,7 +142,7 @@ Let's overlay our results on the original image
 
 cells_colored <- paintObjects(cells_cleaned, im_cropped, col = "#FFA500")
 plot(im_cropped); text(x = 10, y = 20, label = "original image", adj = c(0, 1), col = "yellow", cex = 5)
-plot(cells_colored); text(x = 10, y = 20, label = "outlined nuclei", adj = c(0, 1), col = "yellow", cex = 5)
+plot(cells_colored); #text(x = 10, y = 20, label = "outlined nuclei", adj = c(0, 1), col = "yellow", cex = 5)
 
 ```
 
